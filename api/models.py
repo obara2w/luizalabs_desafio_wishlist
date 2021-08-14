@@ -18,7 +18,7 @@ class Product(models.Model):
         verbose_name = 'Produto'
 
     def __str__(self):
-        return 'Produto {} da Marca {} com preço de R$ {}'.format(self.brand, self.title, self.price)
+        return 'Produto {} da Marca {} com preço de R$ {}'.format(self.title, self.brand, self.price)
 
     objects = models.Manager()
 
