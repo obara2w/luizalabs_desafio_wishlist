@@ -4,12 +4,21 @@ from django.test import TestCase
 
 from api.models import Customer, Product
 
+def create_customers():
+    Customer.objects.create(name='Cliente 1', email='cliente1@luizalabs.com')
+    Customer.objects.create(name='Cliente 2', email='cliente2@luizalabs.com')
+    Customer.objects.create(name='Cliente 3', email='cliente3@luizalabs.com')
+
+
+def create_products():
+    Product.objects.create(title='Produto 1', price=148.98, image='http://blob.luizalabs.com/images/img_1.png', brand='Marca 1', review_score=5)
+    Product.objects.create(title='Produto 2', price=878, image='http://blob.luizalabs.com/images/img_2.png', brand='Marca 2', review_score=2.6)
+    Product.objects.create(title='Produto 3', price=.98, image='http://blob.luizalabs.com/images/img_3.png', brand='Marca 3', review_score=.9)
+
 
 class CustomerTestCase(TestCase):
     def setUp(self):
-        Customer.objects.create(name='Cliente 1', email='cliente1@luizalabs.com')
-        Customer.objects.create(name='Cliente 2', email='cliente2@luizalabs.com')
-        Customer.objects.create(name='Cliente 3', email='cliente3@luizalabs.com')
+        create_customers()
 
     def test_customer_insert_count(self):
         """Testa se os clientes foram inseridos corretamente."""
@@ -70,9 +79,7 @@ class CustomerTestCase(TestCase):
 
 class ProductTestCase(TestCase):
     def setUp(self):
-        Product.objects.create(title='Produto 1', price=148.98, image='http://blob.luizalabs.com/images/img_1.png', brand='Marca 1', review_score=5)
-        Product.objects.create(title='Produto 2', price=878, image='http://blob.luizalabs.com/images/img_2.png', brand='Marca 2', review_score=2.6)
-        Product.objects.create(title='Produto 3', price=.98, image='http://blob.luizalabs.com/images/img_3.png', brand='Marca 3', review_score=.9)
+        create_products()
 
     def test_product_insert_count(self):
         """Testa se os produtos foram inseridos corretamente."""
@@ -141,3 +148,25 @@ class ProductTestCase(TestCase):
         # Checa que produto não existe mais
         with self.assertRaises(ObjectDoesNotExist):
             Product.objects.get(title='Produto 3')
+
+
+class WhishlistTestCase(TestCase):
+    def setUp(self):
+        create_customers()
+        create_products()
+    
+    def test_whishlist(self):
+        """Testa se é possivel adicionar produtos na wishlist do cliente"""
+
+        # Recupera cliente
+        customer_3 = Customer.objects.get(email='cliente3@luizalabs.com')
+
+        # Recupera 2 produtos para ser inserido na wishlist do cliente
+        product_2 = Product.objects.get(title='Produto 2')
+        product_3 = Product.objects.get(title='Produto 3')
+
+        # adiciona produtos na wishlist
+        customer_3.wish_list.add(product_2, product_3)
+        
+        # checa se há 2 produtos na wishlist do cliente
+        self.assertTrue(Customer.objects.get(email='cliente3@luizalabs.com').wish_list.count() == 2)
