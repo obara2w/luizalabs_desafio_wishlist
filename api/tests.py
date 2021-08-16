@@ -1,8 +1,14 @@
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth.models import User
 from django.db.utils import IntegrityError
 from django.test import TestCase
+from django.urls import reverse
+# from requests.auth import HTTPBasicAuth
+from rest_framework import status
+from rest_framework.test import APITestCase
 
 from api.models import Customer, Product
+
 
 def create_customers():
     Customer.objects.create(name='Cliente 1', email='cliente1@luizalabs.com')
@@ -170,3 +176,136 @@ class WhishlistTestCase(TestCase):
         
         # checa se há 2 produtos na wishlist do cliente
         self.assertTrue(Customer.objects.get(email='cliente3@luizalabs.com').wish_list.count() == 2)
+
+
+API_USER = 'user'
+API_PASS = 'qweasdws'
+N_CUSTOMER = 10
+N_PRODUCT = 10
+
+class CustomerAPITestCase(APITestCase):
+    def setUp(self):
+        # cria usuario de api e faz login
+        self.create_user_and_login()
+
+        # cria usuários para massa de teste
+        self.create_n_customers(N_CUSTOMER)
+
+    def create_user_and_login(self):
+        """cria usuário para utilizar nas chamadas de APIs"""
+        user = User.objects.create_user(API_USER,  'api.user@luizalabs.com', API_PASS)
+
+        # checa que usuário consegue logar
+        self.assertTrue(self.client.login(username=API_USER, password=API_PASS))
+
+    def create_customer(self, index):
+        """Cria um usuário de API"""
+        url = reverse('customer-list')
+        data = {
+            'name': 'API Customer {}'.format(index),
+            'email': 'api{}.customer@luizalabs.com'.format(index)
+        }
+        response = self.client.post(url, data, format='json')
+        return response.status_code
+
+    def create_n_customers(self, n):
+        """Cria n usuários de APIs"""
+        customers_status = list(map(lambda x: self.create_customer(x), range(n)))
+
+        # checa que foi criado atraves do status code
+        map(lambda x: self.assertEqual(x, status.HTTP_201_CREATED), customers_status)
+
+    def test_create_customer(self):
+        """Testa criação de cliente via API."""
+        
+        # Checa que foram criados N clientes
+        self.assertEqual(Customer.objects.count(), N_CUSTOMER)
+
+        # Checa cliente com id = 1
+        self.assertEqual(Customer.objects.get(id=1).name, 'API Customer 0')
+        self.assertEqual(Customer.objects.get(id=1).email, 'api0.customer@luizalabs.com')
+
+    def get_all_customers(self):
+        # Executa get
+        url = reverse('customer-list')
+        response = self.client.get(url, format='json')
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+        return response
+
+    def test_list_all_customer(self):
+        """Testa a listagem de todos os clientes"""
+        response = self.get_all_customers()
+
+        # checa se há os n clientes
+        self.assertEqual(len(response.data), N_CUSTOMER)
+
+        # checa todos os valores
+        [self.check_customer_att(customer) for customer in response.data]
+
+    def check_customer_att(self, customer_api_obj):
+        """checa todos os atributos do cliente com o que está na base de dados"""
+        self.assertEqual(customer_api_obj.get('name'), Customer.objects.get(id=customer_api_obj.get('id')).name)
+        self.assertEqual(customer_api_obj.get('email'), Customer.objects.get(id=customer_api_obj.get('id')).email)
+
+    def test_get_one_customer(self):
+        """Testa o retrieve de um único cliente"""
+        # recupera um id para trazer os details
+        response = self.get_all_customers()
+        id = response.data[5].get('id')
+
+        # Executa get
+        url = reverse('customer-detail', kwargs={'pk': id})
+        response = self.client.get(url, format='json')
+
+        # Checa atributos
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+        self.check_customer_att(response.data)
+        
+    def test_update_one_customer_put(self):
+        """Testa a atualização de um cliente (put)"""
+        # recupera um id para atualizar
+        response = self.get_all_customers()
+        id = response.data[5].get('id')
+
+        # executa put   
+        url = reverse('customer-detail', kwargs={'pk': id})
+        response = self.client.put(url, data={'name': 'Nome alterado', 'email': 'email.alterado@luizalabs.com'}, format='json')
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+
+        # checa atributos
+        self.check_customer_att(response.data)
+
+    def test_update_one_customer_patch(self):
+        """Testa a atualização de um cliente (patch)"""
+        # recupera um id para atualizar
+        response = self.get_all_customers()
+        id = response.data[5].get('id')
+
+        # executa patch   
+        url = reverse('customer-detail', kwargs={'pk': id})
+        response = self.client.patch(url, data={'name': 'Apenas o nome será alterado'}, format='json')
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+
+        # checa atributos
+        self.check_customer_att(response.data)
+
+    def remove_customer(self, id):
+        """remove um cliente"""
+        url = reverse('customer-detail', kwargs={'pk': id})
+        response = self.client.delete(url)
+        return response.status_code
+
+    def test_delete_one_customer(self):
+        """Testa a remoção de um cliente"""
+        # recupera clientes para remover
+        response = self.get_all_customers()
+
+        # remove os clientes 1 por 1
+        status_list = list(map(lambda customer: self.remove_customer(customer.get('id')), response.data))
+
+        # checa que foi deletado atraves do status code
+        map(lambda x: self.assertEqual(x, status.HTTP_204_NO_CONTENT), status_list)
+
+        # checa que há 0 clientes
+        self.assertEqual(Customer.objects.count(), 0)
+        
