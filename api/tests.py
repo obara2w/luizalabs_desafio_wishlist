@@ -231,6 +231,33 @@ class CustomerAPITestCase(LuizaLabsAPITestCase):
         self.assertEqual(Customer.objects.get(id=1).name, 'API Customer 0')
         self.assertEqual(Customer.objects.get(id=1).email, 'api0.customer@luizalabs.com')
 
+    def test_create_duplicated_email(self):
+        """Testa criar um cliente com o mesmo email"""
+        # cria 1 cliente
+        url = reverse('customer-list')
+        data1 = {
+            'name': 'Cliente1',
+            'email': 'email@luizalabs.com'
+        }
+        response = self.client.post(url, data1, format='json')
+
+        # checa que o cliente foi criado
+        self.assertEquals(response.status_code, status.HTTP_201_CREATED)
+
+        # cria outro cliente
+        data2 = {
+            'name': 'Cliente2',
+            'email': 'email@luizalabs.com'
+        }
+        response = self.client.post(url, data2, format='json')
+
+        # checa que o cliente não foi inserido
+        self.assertEquals(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # checa que há algum problema com o email
+        self.assertIn('email', response.data)
+
+
     def get_all_customers(self):
         # Executa get
         url = reverse('customer-list')
