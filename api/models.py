@@ -15,7 +15,8 @@ class Product(models.Model):
                                      help_text='Média dos reviews para este Produto')
 
     class Meta:
-        verbose_name = 'Produto'
+        verbose_name = 'Produto',
+        ordering = ['-id']
 
     def __str__(self):
         return 'Produto {} da Marca {} com preço de R$ {}'.format(self.title, self.brand, self.price)

@@ -1,9 +1,10 @@
+from collections import deque
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import User
 from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
-# from requests.auth import HTTPBasicAuth
+from random import seed, randint, random
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -183,13 +184,10 @@ API_PASS = 'qweasdws'
 N_CUSTOMER = 10
 N_PRODUCT = 10
 
-class CustomerAPITestCase(APITestCase):
-    def setUp(self):
+class LuizaLabsAPITestCase(APITestCase):
+    def setUp(self) -> None:
         # cria usuario de api e faz login
         self.create_user_and_login()
-
-        # cria usuários para massa de teste
-        self.create_n_customers(N_CUSTOMER)
 
     def create_user_and_login(self):
         """cria usuário para utilizar nas chamadas de APIs"""
@@ -197,6 +195,14 @@ class CustomerAPITestCase(APITestCase):
 
         # checa que usuário consegue logar
         self.assertTrue(self.client.login(username=API_USER, password=API_PASS))
+
+
+class CustomerAPITestCase(LuizaLabsAPITestCase):
+    def setUp(self):
+        super().setUp()
+
+        # cria usuários para massa de teste
+        self.create_n_customers(N_CUSTOMER)
 
     def create_customer(self, index):
         """Cria um usuário de API"""
@@ -213,7 +219,7 @@ class CustomerAPITestCase(APITestCase):
         customers_status = list(map(lambda x: self.create_customer(x), range(n)))
 
         # checa que foi criado atraves do status code
-        map(lambda x: self.assertEqual(x, status.HTTP_201_CREATED), customers_status)
+        deque(map(lambda x: self.assertEqual(x, status.HTTP_201_CREATED), customers_status))
 
     def test_create_customer(self):
         """Testa criação de cliente via API."""
@@ -304,8 +310,137 @@ class CustomerAPITestCase(APITestCase):
         status_list = list(map(lambda customer: self.remove_customer(customer.get('id')), response.data))
 
         # checa que foi deletado atraves do status code
-        map(lambda x: self.assertEqual(x, status.HTTP_204_NO_CONTENT), status_list)
+        deque(map(lambda x: self.assertEqual(x, status.HTTP_204_NO_CONTENT), status_list))
 
         # checa que há 0 clientes
         self.assertEqual(Customer.objects.count(), 0)
+
+
+PRICE_MIN = 0
+PRICE_MAX = 1000
+
+class ProductAPITestCase(LuizaLabsAPITestCase):
+    def setUp(self):
+        super().setUp()
+
+        # cria produtos para massa de teste
+        self.create_n_products(N_PRODUCT)
+
+    def create_product(self, index):
+        """Cria um produto de API"""
+        url = reverse('product-list')
+        seed(index)
+        data = {
+            'title': 'API Product {}'.format(index), 
+            'price': PRICE_MIN + (random() * (PRICE_MAX - PRICE_MIN)), 
+            'image': 'http://blob.luizalabs.com/images/img_{}.png'.format(index),
+            'brand': 'Marca {}'.format(index), 
+            'review_score': randint(1, 5)
+        }
+        response = self.client.post(url, data, format='json')
+        return response.status_code
+
+    def create_n_products(self, n):
+        """Cria n produtos de APIs"""
+        products_status = list(map(lambda x: self.create_product(x), range(n)))
+
+        # checa que foi criado atraves do status code
+        deque(map(lambda x: self.assertEqual(x, status.HTTP_201_CREATED), products_status))
+
+    def test_create_product(self):
+        """Testa criação de produto via API."""
+        
+        # Checa que foram criados N produtos
+        self.assertEqual(Product.objects.count(), N_PRODUCT)
+
+        # Checa produto com id = 1
+        self.assertEqual(Product.objects.get(id=1).title, 'API Product 0')
+        self.assertEqual(Product.objects.get(id=1).brand, 'Marca 0')
+
+    def get_all_products(self):
+        # Executa get
+        url = reverse('product-list')
+        response = self.client.get(url, format='json')
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+        return response
+
+    def test_list_all_product(self):
+        """Testa a listagem de todos os produtos"""
+        response = self.get_all_products()
+
+        # checa se há os n produtos
+        self.assertEqual(response.data.get('count'), N_PRODUCT)
+
+        # checa todos os valores
+        [self.check_product_att(product) for product in response.data.get('results')]
+
+    def check_product_att(self, product_api_obj):
+        """checa todos os atributos do produto com o que está na base de dados"""
+        self.assertEqual(product_api_obj.get('title'), Product.objects.get(id=product_api_obj.get('id')).title)
+        self.assertEqual(product_api_obj.get('brand'), Product.objects.get(id=product_api_obj.get('id')).brand)
+        self.assertEqual(product_api_obj.get('price'), Product.objects.get(id=product_api_obj.get('id')).price)
+        self.assertEqual(product_api_obj.get('image'), Product.objects.get(id=product_api_obj.get('id')).image)
+        self.assertEqual(product_api_obj.get('reviewScore'), Product.objects.get(id=product_api_obj.get('id')).review_score)
+
+    def test_get_one_product(self):
+        """Testa o retrieve de um único produto"""
+        # recupera um id para trazer os details
+        response = self.get_all_products()
+        id = response.data.get('results')[5].get('id')
+
+        # Executa get
+        url = reverse('product-detail', kwargs={'pk': id})
+        response = self.client.get(url, format='json')
+
+        # Checa atributos
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+        self.check_product_att(response.data)
+        
+    def test_update_one_product_put(self):
+        """Testa a atualização de um produto (put)"""
+        # recupera um id para atualizar
+        response = self.get_all_products()
+        id = response.data.get('results')[5].get('id')
+
+        # executa put   
+        url = reverse('product-detail', kwargs={'pk': id})
+        response = self.client.put(url, data={'title': 'Titulo alterado', 'brand': 'Nova Marca', 'price': 123, 'image': 'http://imagem.com', 'reviewScore': 5}, format='json')
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+
+        # checa atributos
+        self.check_product_att(response.data)
+
+    def test_update_one_product_patch(self):
+        """Testa a atualização de um produto (patch)"""
+        # recupera um id para atualizar
+        response = self.get_all_products()
+        id = response.data.get('results')[5].get('id')
+
+        # executa patch   
+        url = reverse('product-detail', kwargs={'pk': id})
+        response = self.client.patch(url, data={'title': 'Apenas o titulo será alterado'}, format='json')
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+
+        # checa atributos
+        self.check_product_att(response.data)
+
+    def remove_product(self, id):
+        """remove um produto"""
+        url = reverse('product-detail', kwargs={'pk': id})
+        response = self.client.delete(url)
+        return response.status_code
+
+    def test_delete_one_product(self):
+        """Testa a remoção de um produto"""
+        # recupera produtos para remover
+        response = self.get_all_products()
+
+        # remove os produtos 1 por 1
+        status_list = list(map(lambda product: self.remove_product(product.get('id')), response.data.get('results')))
+
+        # checa que foi deletado atraves do status code
+        deque(map(lambda x: self.assertEqual(x, status.HTTP_204_NO_CONTENT), status_list))
+
+        # checa que há 0 produtos
+        self.assertEqual(Product.objects.count(), 0)
         
