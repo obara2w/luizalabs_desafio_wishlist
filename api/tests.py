@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
-from random import seed, randint, random
+from random import seed, randint, random, choice, sample
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -196,14 +196,6 @@ class LuizaLabsAPITestCase(APITestCase):
         # checa que usuário consegue logar
         self.assertTrue(self.client.login(username=API_USER, password=API_PASS))
 
-
-class CustomerAPITestCase(LuizaLabsAPITestCase):
-    def setUp(self):
-        super().setUp()
-
-        # cria usuários para massa de teste
-        self.create_n_customers(N_CUSTOMER)
-
     def create_customer(self, index):
         """Cria um usuário de API"""
         url = reverse('customer-list')
@@ -220,6 +212,49 @@ class CustomerAPITestCase(LuizaLabsAPITestCase):
 
         # checa que foi criado atraves do status code
         deque(map(lambda x: self.assertEqual(x, status.HTTP_201_CREATED), customers_status))
+
+    def create_product(self, index):
+        """Cria um produto de API"""
+        url = reverse('product-list')
+        seed(index)
+        data = {
+            'title': 'API Product {}'.format(index), 
+            'price': PRICE_MIN + (random() * (PRICE_MAX - PRICE_MIN)), 
+            'image': 'http://blob.luizalabs.com/images/img_{}.png'.format(index),
+            'brand': 'Marca {}'.format(index), 
+            'review_score': randint(1, 5)
+        }
+        response = self.client.post(url, data, format='json')
+        return response.status_code
+
+    def create_n_products(self, n):
+        """Cria n produtos de APIs"""
+        products_status = list(map(lambda x: self.create_product(x), range(n)))
+
+        # checa que foi criado atraves do status code
+        deque(map(lambda x: self.assertEqual(x, status.HTTP_201_CREATED), products_status))
+
+    def get_all_customers(self):
+        # Executa get
+        url = reverse('customer-list')
+        response = self.client.get(url, format='json')
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+        return response
+    
+    def get_all_products(self):
+        # Executa get
+        url = reverse('product-list')
+        response = self.client.get(url, format='json')
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+        return response
+
+
+class CustomerAPITestCase(LuizaLabsAPITestCase):
+    def setUp(self):
+        super().setUp()
+
+        # cria usuários para massa de teste
+        self.create_n_customers(N_CUSTOMER)
 
     def test_create_customer(self):
         """Testa criação de cliente via API."""
@@ -256,14 +291,6 @@ class CustomerAPITestCase(LuizaLabsAPITestCase):
 
         # checa que há algum problema com o email
         self.assertIn('email', response.data)
-
-
-    def get_all_customers(self):
-        # Executa get
-        url = reverse('customer-list')
-        response = self.client.get(url, format='json')
-        self.assertEquals(response.status_code, status.HTTP_200_OK)
-        return response
 
     def test_list_all_customer(self):
         """Testa a listagem de todos os clientes"""
@@ -353,27 +380,6 @@ class ProductAPITestCase(LuizaLabsAPITestCase):
         # cria produtos para massa de teste
         self.create_n_products(N_PRODUCT)
 
-    def create_product(self, index):
-        """Cria um produto de API"""
-        url = reverse('product-list')
-        seed(index)
-        data = {
-            'title': 'API Product {}'.format(index), 
-            'price': PRICE_MIN + (random() * (PRICE_MAX - PRICE_MIN)), 
-            'image': 'http://blob.luizalabs.com/images/img_{}.png'.format(index),
-            'brand': 'Marca {}'.format(index), 
-            'review_score': randint(1, 5)
-        }
-        response = self.client.post(url, data, format='json')
-        return response.status_code
-
-    def create_n_products(self, n):
-        """Cria n produtos de APIs"""
-        products_status = list(map(lambda x: self.create_product(x), range(n)))
-
-        # checa que foi criado atraves do status code
-        deque(map(lambda x: self.assertEqual(x, status.HTTP_201_CREATED), products_status))
-
     def test_create_product(self):
         """Testa criação de produto via API."""
         
@@ -384,12 +390,6 @@ class ProductAPITestCase(LuizaLabsAPITestCase):
         self.assertEqual(Product.objects.get(id=1).title, 'API Product 0')
         self.assertEqual(Product.objects.get(id=1).brand, 'Marca 0')
 
-    def get_all_products(self):
-        # Executa get
-        url = reverse('product-list')
-        response = self.client.get(url, format='json')
-        self.assertEquals(response.status_code, status.HTTP_200_OK)
-        return response
 
     def test_list_all_product(self):
         """Testa a listagem de todos os produtos"""
@@ -470,4 +470,119 @@ class ProductAPITestCase(LuizaLabsAPITestCase):
 
         # checa que há 0 produtos
         self.assertEqual(Product.objects.count(), 0)
-        
+
+
+class WishlistAPITestCase(LuizaLabsAPITestCase):
+    def setUp(self):
+        super().setUp()
+
+        # cria usuários para massa de teste
+        self.create_n_customers(N_CUSTOMER)
+
+        # cria produtos para massa de teste
+        self.create_n_products(N_PRODUCT)
+
+    def add_to_wishlist(self, customer_id, product_id):
+        """Adiciona um produto para a wishlist de um cliente"""
+        url = reverse('wishlist-list')
+        data = {
+            'customer': customer_id,
+            'product': product_id
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        return response.data
+
+    def test_add_to_wishlist(self):
+        """Teste a inclusão de produtos na lista de um cliente"""
+
+        # seleciona um cliente
+        response = self.get_all_customers()
+        customer = choice(response.data)
+        customer_id = customer.get('id')
+
+        # seleciona n=5 produtos para inserir na lista
+        response = self.get_all_products()
+        products = sample(response.data.get('results'), 5)
+
+        # insere os produtos na lista
+        inserted = list(map(lambda x: self.add_to_wishlist(customer_id, x.get('id')), products))
+
+        # checa se o cliente possui os produtos na lista
+        customer_obj = Customer.objects.get(id=customer_id)
+        deque(map(lambda product: self.assertTrue(customer_obj.wish_list.get(id=product.get('id'))), products))
+
+        return inserted
+
+    def test_delete_from_wishlist(self):
+        """Testa a remoção de um produto da lista de um cliente"""
+        # insere alguns produtos em uma wishlist de um cliente
+        wishlist = self.test_add_to_wishlist()
+
+        # remove da wishlist
+        for wish in wishlist:
+            id = wish.get('id')
+            url = reverse('wishlist-detail', kwargs={'pk': id})
+            response = self.client.delete(url)
+
+            # checa o status
+            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    
+    def test_add_to_non_existent_wishlist(self):
+        """Testa a inclusão de um produto em uma lista que não existe"""
+        # seleciona 1 produto para inserir na lista
+        response = self.get_all_products()
+        product = choice(response.data.get('results'))
+        product_id = product.get('id')
+
+        # adiciona o produto a uma lista de um cliente inexistente
+        url = reverse('wishlist-list')
+        data = {
+            'customer': 9999999,
+            'product': product_id
+        }
+        response = self.client.post(url, data, format='json')
+
+        # checa que não foi inserido
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # checa que há algum problema com o cliente
+        self.assertIn('customer', response.data)
+
+    def test_duplicated_product(self):
+        """Testa a inclusão de um produto duplicado na lista de um cliente"""
+        # seleciona um cliente
+        response = self.get_all_customers()
+        customer = choice(response.data)
+        customer_id = customer.get('id')
+
+        # seleciona 1 produto para inserir na lista
+        response = self.get_all_products()
+        product = choice(response.data.get('results'))
+        product_id = product.get('id')
+
+        # adiciona o produto a uma lista do cliente
+        url = reverse('wishlist-list')
+        data = {
+            'customer': customer_id,
+            'product': product_id
+        }
+        response = self.client.post(url, data, format='json')
+
+        # checa que foi inserido
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # adiciona novamente
+        url = reverse('wishlist-list')
+        data = {
+            'customer': customer_id,
+            'product': product_id
+        }
+        response = self.client.post(url, data, format='json')
+
+        # checa que não foi inserido
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # checa que há algum problema com os campos
+        self.assertIn('non_field_errors', response.data)
