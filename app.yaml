@@ -1,0 +1,15 @@
+runtime: python37
+
+handlers:
+- url: /static
+  static_dir: static/
+
+- url: /.*
+  script: auto
+
+env_variables:
+  DB_NAME: "api"
+  DB_USER: "apiuser"
+  DB_PASSWORD: "qweasdws"
+  DB_HOST: "/cloudsql/luizalabs-202108:southamerica-east1:desafio-api"
+  DB_PORT: "5432"
