@@ -42,6 +42,10 @@ Usuários que podem ser usados na API:
 
 1.  Clone este projeto em algum diretório.
 
+    ```sh
+    git clone https://github.com/obara2w/luizalabs_desafio_wishlist.git
+    ```
+
 ### Passo 3: Configure um novo ambiente virtual
 
 1.  No terminal, execute:
@@ -85,6 +89,7 @@ Se você quiser sair do ambiente virtual, basta executar `deactivate` no termina
 3.  Agora você pode instalar todos os pacotes necessários executando:
 
     ```sh
+    cd luizalabs_desafio_wishlist
     pip install -r requirements.txt
     ```
 
@@ -142,7 +147,7 @@ python manage.py runserver
 
 A API poderá ser acessada pela endereço http://localhost:8000/ em seu browser.
 
-Utilize o Super Usuário criado para executar os operaçãos da API, ou crie um usuário com o operação `/user/`.
+Utilize o Super Usuário criado para executar os operaçãos da API, ou crie um usuário com o operação `/user/` (**Note**: Apenas super usuários conseguem criar novos usuários).
 
 
 ## Como executar os testes unitários
