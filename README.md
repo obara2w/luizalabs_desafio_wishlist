@@ -1,10 +1,23 @@
 # Desafio Técnico luizalabs
 
-Esta API foi publicada no seguinte endereço:
+## O que é?
+
+Esta é uma API desenvolvida em Python, para o desafio técnico no processo de recrutamento da luizalabs.
+
+Frameworks/Libs utilizadas:
+
+* Django - <https://www.djangoproject.com/>
+* Djangorestframework - <https://www.django-rest-framework.org/>
+* drf-spectacular - <https://github.com/tfranzel/drf-spectacular>
+
+Banco de dados utilizado:
+* PostgreSQL - <https://www.postgresql.org/>
+
+A API está publicada no seguinte endereço:
 
 https://desafioluizalabs.obaraweb.com/
 
-A documentação swagger da API pode ser acessada em:
+A documentação pode ser acessada em:
 
 https://desafioluizalabs.obaraweb.com/swagger-ui/
 
@@ -13,11 +26,6 @@ Usuários que podem ser usados na API:
   
 * Username: `admin` / Password: `qweasdws`
 * Username: `user` / Password: `qweasdws`
-
-## O que é?
-
-Este é uma API desenvolvida em Python / Django, para o desafio técnico no processo de recrutamento da luizalabs.
-
 
 ## Como usar
 
@@ -134,7 +142,7 @@ python manage.py runserver
 
 A API poderá ser acessada pela endereço http://localhost:8000/ em seu browser.
 
-Utilize o Super Usuário criado para executar os métodos da API, ou crie um usuário com o endpoint `/user/`.
+Utilize o Super Usuário criado para executar os operaçãos da API, ou crie um usuário com o operação `/user/`.
 
 
 ## Como executar os testes unitários

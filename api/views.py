@@ -12,7 +12,7 @@ from api.serializers import UserSerializer, CustomerSerializer, CustomerSerializ
 @extend_schema(tags=['Cliente'])
 class CustomerViewSet(viewsets.ModelViewSet):
     """
-    Endpoint para gerenciamento de cliente, este endpoint pode ser acessado apenas por usuários autenticados
+    Operação para gerenciamento de cliente, este operação pode ser acessado apenas por usuários autenticados
     """
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
@@ -31,7 +31,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 @extend_schema(tags=['Lista de produto favorito'])
 class WishListViewSet(viewsets.ModelViewSet):
     """
-    Endpoint para gerenciamento de lista de produtos favoritos, este endpoint pode ser acessado apenas por usuários autenticados
+    Operação para gerenciamento de lista de produtos favoritos, este operação pode ser acessado apenas por usuários autenticados
     """
     queryset = Wishlist.objects.all()
     serializer_class = WishlistSerializer
@@ -50,7 +50,7 @@ class WishListViewSet(viewsets.ModelViewSet):
 @extend_schema(tags=['Produto'])
 class ProductViewSet(viewsets.ModelViewSet):
     """
-    Endpoint para gerenciamento de produtos, este endpoint pode ser acessado apenas por usuários autenticados
+    Operação para gerenciamento de produtos, este operação pode ser acessado apenas por usuários autenticados
     """
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
@@ -60,8 +60,8 @@ class ProductViewSet(viewsets.ModelViewSet):
 @extend_schema(tags=['Usuário'])
 class UserViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.DestroyModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """
-    Endpoint de gerenciamento de usuários, este endpoint pode ser acessado apenas por superusuários (admins)
-    Nota: Este Endpoint foi criado apenas para de cumprir o requisito de autorização, uma vez que ele só pode ser acessado por admin
+    Operação de gerenciamento de usuários, este operação pode ser acessado apenas por superusuários (admins)
+    Nota: Este Operação foi criado apenas para de cumprir o requisito de autorização, uma vez que ele só pode ser acessado por admin
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
